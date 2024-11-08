@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapping Emergency Centers in Ramallah city</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Leaflet plugins CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-search/dist/leaflet-search.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-measure/dist/leaflet-measure.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-sidebar/src/L.Control.Sidebar.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css" />
+    <!-- Custom CSS -->
+    <style>
+        /* Map container styling */
+        #map { 
+            height: 100vh; /* Full viewport height */
+        }
+
+        /* Legend styling */
+        .legend { 
+            background: white; 
+            line-height: 1.5em;
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+
+        /* Search control styling */
+        .leaflet-control-search {
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+
+        /* Scale control styling */
+        .leaflet-control-scale {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 2px solid #777;
+            border-radius: 5px;
+        }
+
+        /* North arrow styling */
+        .leaflet-control-northarrow {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/north_arrow.svg');
+            background-size: cover;
+            cursor: pointer;
+            z-index: 1000; /* Ensure the arrow is above other controls */
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            padding: 10px;
+            width: 300px;
+            height: 100%;
+            overflow-y: auto;
+            display: none; /* Initially hide sidebar */
+        }
+
+        .sidebar.active {
+            display: block; /* Show sidebar when active */
+        }
+
+        .sidebar-header {
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+        }
+
+        .sidebar-content {
+            margin-bottom: 10px;
+        }
+
+        /* Sidebar toggle button styling */
+        .sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #fff;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Locate user control styling */
+        .leaflet-control-locate {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #fff;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: -1;
+        }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            background-color: #007BFF; /* لون أزرق */
+            color: white;
+            padding:40px;
+            display: flex;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            
+        }
+        .header img {
+            max-height: 40px; /* حجم الصورة */
+            margin-right: 100px;
+        }
+         .header h1 {
+            margin: 0;
+        }
+        .content {
+            padding-top: 120px; /* إضافة مساحة كافية أعلى المحتوى لتجنب التداخل مع الهيدر الثابت */
+        }
+    </style>
+    
+</head>
+    <body>
+        <div class="header">
+        <img src="https://www.marefa.org/w/images/thumb/1/16/Birzeit_University_logo.svg/600px-Birzeit_University_logo.svg.png" alt="Birzeit University Logo">
+        <h1>Mapping Emergency Centers in Ramallah city</h1>
+    </div>
+    <div class="content">
+    <!-- Map container -->
+    <div id="map"></div>
+    
+    <!-- North arrow control -->
+    <div class="leaflet-control-northarrow" title="North"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>Categories</h3>
+            <p>Mapping Emergency Centers in Ramallah city</p>
+        </div>
+        <div class="sidebar-content">
+            <input type="checkbox" id="toggleHospitals" checked>
+            <label for="toggleHospitals">Hospitals</label><br>
+            <input type="checkbox" id="toggleCivil" checked>
+            <label for="toggleCivil">Civil Defense Centers</label><br>
+            <input type="checkbox" id="togglePharmacies" checked>
+            <label for="togglePharmacies">Pharmacies</label><br>
+            <input type="checkbox" id="togglePolice" checked>
+            <label for="togglePolice">Police Stations</label><br>
+            <input type="checkbox" id="toggleZones" checked>
+            <label for="toggleZones">Ramallah Zones</label><br>
+            <label for="destination">Destination:</label><br>
+            <input type="text" id="destination" placeholder="Enter coordinates (lat, lng)"><br>
+        </div>
+    </div>
+    
+    <!-- Coordinates display -->
+    <div id="coordinates" style="position: absolute; bottom: 10px; left: 10px;"></div>
+    
+    <!-- Locate user control -->
+    <div id="locateUser" class="leaflet-control-locate" title="Locate user"></div>
+    
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Leaflet plugins JavaScript -->
+    <script src="https://unpkg.com/leaflet-search/dist/leaflet-search.min.js"></script>
+    <script src="https://rawgit.com/rowanwins/leaflet-easyPrint/gh-pages/dist/bundle.js"></script>
+    <script src="https://unpkg.com/leaflet-measure/dist/leaflet-measure.js"></script>
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script>
+        var map = L.map('map').setView([31.95, 35.2], 12);
+
+        var baseMaps = {
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }),
+            "OpenTopoMap": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 17,
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+            }),
+            "Stamen Watercolor": L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.jpg', {
+                attribution: 'Map tiles by <a href="https://stamen.com">Stamen Design</a>, under <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Data by <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, under <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY SA</a>.'
+            }),
+            "CartoDB Positron": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            }),
+            "Esri WorldImagery": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }),
+            "Stamen Toner": L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png', {
+                attribution: 'Map tiles by <a href="https://stamen.com">Stamen Design</a>, under <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Data by <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, under <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY SA</a>.'
+            }),
+            "Thunderforest Landscape": L.tileLayer('https://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=YOUR_API_KEY', {
+                attribution: 'Maps &copy; Thunderforest, Data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }),
+            "Esri WorldStreetMap": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{x}/{y}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+            })
+        };
+
+        baseMaps["OpenStreetMap"].addTo(map);
+       
+        function createGeoJsonLayer(url, propertyName, pointToLayerFunction, style) {
+            var layer = L.geoJson(null, {
+                pointToLayer: pointToLayerFunction,
+                style: style,
+                onEachFeature: function (feature, layer) {
+                    var popupContent = '<b>' + (feature.properties[propertyName] || "No name") + '</b>';
+                    if (feature.properties.number_pho) {
+                        popupContent += '<br>Phone: ' + feature.properties.number_pho;
+                    }
+                    layer.bindPopup(popupContent);
+                }
+            });
+           
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    layer.addData(data);
+                    if (url === 'RamallahZones.geojson') {
+                        map.fitBounds(layer.getBounds());
+                    }
+                })
+                .catch(error => console.error('Error loading GeoJSON:', error));
+
+            return layer;
+        }
+// Define a type-to-color mapping
+        const typeColors = {
+            hospital: 'orange',
+            ciivilld: 'yellow',
+            pharmacy: 'brown',
+            police: 'black'
+        };
+
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'legend');
+            div.innerHTML += '<div><span style="background-color: orange; width: 20px; height: 20px; display: inline-block;"><img src="icons/hospital.svg" style="padding: 3px;"></span>Hospitals</div>';
+            div.innerHTML += '<div><span style="background-color: yellow; width: 20px; height: 20px; display: inline-block;"><img src="icons/ciivilld.svg" style="padding: 3px;"></span>Civil Defense Centers</div>';
+            div.innerHTML += '<div><span style="background-color: brown; width: 20px; height: 20px; display: inline-block;"><img src="icons/pharmacy.svg" style="padding: 3px;"></span>Pharmacies</div>';
+            div.innerHTML += '<div><span style="background-color: black; width: 20px; height: 20px; display: inline-block;"><img src="icons/police.svg" style="padding: 3px;"></span>Police Stations</div>';
+            div.innerHTML += '<div><span style="background-color: black; width: 20px; height: 3px; display: inline-block;"></span>Ramallah Zones</div>';
+            return div;
+        };
+        legend.addTo(map);
+
+        // Create custom marker icons
+        function createCustomIcon(type) {
+            const color = typeColors[type.toLowerCase()]; // Convert type to lowercase for consistency
+            const iconHtml = `<div style="background-color: ${color}; padding: 3px; border-radius: 50%; width: 24px; height: 24px;"><img src="icons/${type}.svg" style="padding: 3px;"></div>`;
+            
+            return L.divIcon({
+                className: 'custom-marker',
+                html: iconHtml,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
+
+        // Modify the pointToLayerFunctionFactory
+        function pointToLayerFunctionFactory(type) {
+            return function (feature, latlng) {
+                return L.marker(latlng, {
+                    icon: createCustomIcon(type)
+                });
+            };
+        }
+
+
+        function pointToLayerFunctionFactory(color) {
+            return function (feature, latlng) {
+                return L.circleMarker(latlng, {
+                    radius: 8,
+                    fillColor: color,
+                    color: color,
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+            };
+        }
+
+        var zonesLayer = createGeoJsonLayer('RamallahZones.geojson', 'NAME', null, {color: 'orange', fillOpacity: 0});
+        var hospitalLayer = createGeoJsonLayer('hospital.geojson', 'NAME_AR', pointToLayerFunctionFactory('red'), null);
+        var civilLayer = createGeoJsonLayer('ciivilld.geojson', 'Name', pointToLayerFunctionFactory('yellow'), null);
+        var pharmacyLayer = createGeoJsonLayer('pharmacy.geojson', 'NAME_AR', pointToLayerFunctionFactory('green'), null);
+        var policeLayer = createGeoJsonLayer('Police.geojson', 'NAME_AR_1', pointToLayerFunctionFactory('blue'), null);
+
+        zonesLayer.addTo(map);
+        hospitalLayer.addTo(map);
+        civilLayer.addTo(map);
+        pharmacyLayer.addTo(map);
+        policeLayer.addTo(map);
+
+        var overlayMaps = {
+            "Hospitals": hospitalLayer,
+            "Civil Defense Centers": civilLayer,
+            "Pharmacies": pharmacyLayer,
+            "Police Stations": policeLayer,
+            "Ramallah Zones": zonesLayer
+        };
+
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        var searchControl = new L.Control.Search({
+            layer: L.featureGroup([hospitalLayer, civilLayer, pharmacyLayer, policeLayer]),
+            propertyName: 'NAME_AR',
+            moveToLocation: function(latlng, title, map) {
+                map.setView(latlng, 15);
+            }
+        });
+
+        searchControl.on('search:locationfound', function(e) {
+            e.layer.openPopup();
+            if (map.routingControl) {
+                map.removeControl(map.routingControl);
+            }
+            map.routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(31.95, 35.2),  // Starting point, you can customize this
+                    e.latlng
+                ],
+                routeWhileDragging: true
+            }).addTo(map);
+        });
+
+        map.addControl(searchControl);
+
+       var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML += '<b>Legend</b><br>';
+    div.innerHTML += '<i style="background: red; width: 18px; height: 18px; display: inline-block;"></i> Hospitals<br>';
+    div.innerHTML += '<i style="background: yellow; width: 18px; height: 18px; display: inline-block;"></i> Civil Defense Centers<br>';
+    div.innerHTML += '<i style="background: green; width: 18px; height: 18px; display: inline-block;"></i> Pharmacies<br>';
+    div.innerHTML += '<i style="background: blue; width: 18px; height: 18px; display: inline-block;"></i> Police Stations<br>';
+    div.innerHTML += '<i style="background: orange; width: 18px; height: 18px; display: inline-block;"></i> Ramallah Zones<br>';
+    return div;
+};
+
+legend.addTo(map);
+       
+         L.control.fullscreen({
+            position: 'topleft',
+            title: 'Full Screen',
+            titleCancel: 'Exit Full Screen',
+            forceSeparateButton: true
+        }).addTo(map);
+
+
+        // Adding scale control
+        L.control.scale().addTo(map);
+
+        // Adding print tool
+        var printer = L.easyPrint({
+            title: 'Print map',
+            position: 'topleft',
+            elementsToHide: '.legend, .leaflet-control-search'
+        }).addTo(map);
+
+        // Adding measure tool
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            primaryAreaUnit: 'sqmeters',
+            activeColor: '#FF8300',
+            completedColor: '#FF8300'
+        });
+        measureControl.addTo(map);
+
+        // Adding draw control
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        var drawControl = new L.Control.Draw({
+            position: 'topleft',
+            draw: {
+                polyline: true,
+                polygon: true,
+                circle: false,
+                rectangle: true,
+                marker: true
+            },
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
+        });
+
+        map.addControl(drawControl);
+
+        map.on(L.Draw.Event.CREATED, function (event) {
+            var layer = event.layer;
+            drawnItems.addLayer(layer);
+        });
+
+        // Adding locate user control
+        var locateUserControl = L.control.locate({
+            position: 'topleft',
+            drawCircle: true,
+            follow: true,
+            setView: 'untilPan',
+            keepCurrentZoomLevel: true,
+            markerStyle: {
+                weight: 1,
+                opacity: 0.8,
+                fillOpacity: 0.8
+            },
+            circleStyle: {
+                weight: 1,
+                clickable: false
+            },
+            icon: 'fa fa-location-arrow',
+            metric: true,
+            strings: {
+                title: "Show me where I am",
+                popup: "You are within {distance} {unit} from this point",
+                outsideMapBoundsMsg: "You seem located outside the boundaries of the map"
+            },
+            locateOptions: {
+                maxZoom: 18,
+                watch: true,
+                enableHighAccuracy: true,
+                maximumAge: 10000,
+                timeout: 10000
+            }
+        }).addTo(map);
+
+        // Trigger locate user function on load
+        map.on('load', function() {
+            locateUserControl.start();
+        });
+
+        map.whenReady(function() {
+            locateUserControl.start();
+        });
+
+        // Adding routing control
+        var routingControl = L.Routing.control({
+            waypoints: [],
+            routeWhileDragging: true,
+            geocoder: L.Control.Geocoder.nominatim()
+        }).addTo(map);
+
+        // Adding a button to start routing
+        var routingButton = L.easyButton('fa-location-arrow', function(btn, map){
+            // Use the geolocation API to get the current position
+            map.locate({setView: true, maxZoom: 16});
+            map.on('locationfound', function(e){
+                var currentLocation = e.latlng;
+
+                // Open a popup to select the destination
+                L.popup()
+                    .setLatLng(currentLocation)
+                    .setContent('<b>Select your destination</b><br><button onclick="setRoutingDestination()">Set Destination</button>')
+                    .openOn(map);
+
+                window.setRoutingDestination = function() {
+                    var destination = L.DomUtil.get('destination').value;
+                    L.Routing.control({
+                        waypoints: [
+                            currentLocation,
+                            L.latLng(destination)
+                        ],
+                        routeWhileDragging: true
+                    }).addTo(map);
+                    map.closePopup();
+                }
+            });
+        }, 'Get Directions').addTo(map);
+       
+        // Function to toggle showing coordinates on button click
+        var showCoordinatesButton = document.getElementById('showCoordinatesButton');
+        showCoordinatesButton.addEventListener('click', function() {
+            var coordinatesDiv = document.getElementById('coordinates');
+            coordinatesDiv.style.display = 'block'; // Show coordinates div
+        });
+    </script>
+</div>
+</body>
+</html>
